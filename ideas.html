@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Share Ideas</title>
+<style>
+  *{box-sizing:border-box} html,body{height:100%}
+  body{ margin:0; min-height:100vh; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#070708; color:#eaf0ff; padding:18px; max-width:900px; margin:0 auto; }
+  header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px }
+  .card{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; padding:12px; box-shadow:0 6px 16px rgba(0,0,0,0.45); margin-bottom:12px }
+  label{ display:block; margin-bottom:6px }
+  input, textarea{ width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02); color:inherit }
+  textarea{ min-height:110px; resize:vertical }
+  .btn-row{ display:flex; gap:8px; margin-top:8px }
+  button{ background:#2a82ff; color:#fff; border:0; padding:10px 14px; border-radius:10px; cursor:pointer }
+  .btn-ghost{ background:transparent; border:1px solid rgba(255,255,255,0.06) }
+  .idea{ padding:10px; border-radius:10px; margin-bottom:8px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)) }
+  .meta{ font-size:.85rem; color:rgba(200,220,255,0.7); margin-bottom:6px }
+  footer{ text-align:center; color:#9fb6ff; margin-top:10px; font-size:.95rem }
+</style>
+</head>
+<body>
+  <header>
+    <a href="index.html" style="color:inherit; text-decoration:none;">← Back</a>
+    <h1 style="margin:0">Share an idea</h1>
+    <div style="width:42px"></div>
+  </header>
+
+  <main>
+    <section class="card">
+      <form id="ideaForm">
+        <label for="titleInput">Title</label>
+        <input id="titleInput" name="title" required maxlength="80" placeholder="Short title">
+
+        <label for="descInput" style="margin-top:8px">Description</label>
+        <textarea id="descInput" name="description" required maxlength="1000" placeholder="Describe the idea in 1–3 lines"></textarea>
+
+        <div class="btn-row">
+          <button type="submit">Share idea</button>
+          <button type="button" id="clearBtn" class="btn-ghost">Clear all</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 8px 0">Ideas</h3>
+      <div id="ideasList"></div>
+    </section>
+  </main>
+
+  <footer>© <span id="year"></span> — Mini Animated Website</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+  const LS_KEY = 'mini_ideas_list_v1';
+  const ideaForm = document.getElementById('ideaForm');
+  const ideasList = document.getElementById('ideasList');
+
+  function loadIdeas(){ try { const r=localStorage.getItem(LS_KEY); return r?JSON.parse(r):[] } catch(e){return[]}}
+  function saveIdeas(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)) }
+  function escapeHtml(s){ return (s+'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+
+  function renderIdeas(){
+    const arr = loadIdeas().slice().reverse();
+    if(arr.length===0){ ideasList.innerHTML = '<div class="meta">No ideas yet.</div>'; return; }
+    ideasList.innerHTML = arr.map(i => `<div class="idea"><div class="meta">${escapeHtml(i.title)} • ${new Date(i.t).toLocaleString()}</div><div>${escapeHtml(i.desc)}</div></div>`).join('');
+  }
+
+  ideaForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const title = document.getElementById('titleInput').value.trim();
+    const desc  = document.getElementById('descInput').value.trim();
+    if(!title||!desc) return alert('Enter title and description');
+    const arr = loadIdeas();
+    arr.push({title, desc, t:Date.now()});
+    saveIdeas(arr);
+    ideaForm.reset();
+    renderIdeas();
+    alert('Idea saved locally!');
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', ()=>{
+    if(!confirm('Clear all saved ideas from this device?')) return;
+    localStorage.removeItem(LS_KEY);
+    renderIdeas();
+  });
+
+  renderIdeas();
+</script>
+<script>
+/* Touch fallback: ensure taps activate buttons/links reliably */
+(function(){
+  // find interactive elements
+  const interactives = Array.from(document.querySelectorAll('button, a, input[type="submit"], [role="button"]'));
+
+  interactives.forEach(el => {
+    // ignore if already handled
+    if (el._touchBound) return;
+    el._touchBound = true;
+
+    // on touchstart, trigger click once (avoid double-firing)
+    el.addEventListener('touchstart', function(e){
+      // If the element is naturally focusable or clickable, let it run,
+      // but also trigger click for older engines that don't convert touch->click.
+      // Use a short guard to avoid duplicate clicks.
+      if (!el._touchTriggered) {
+        el._touchTriggered = true;
+        try { el.click(); } catch(err){}
+        setTimeout(()=> el._touchTriggered = false, 400);
+      }
+    }, {passive: true});
+  });
+
+  // Also ensure tap-card anchors open on pointer events (for safety)
+  document.querySelectorAll('.tap-card, .tap-card-inner').forEach(el=>{
+    if (el._pc) return;
+    el._pc = true;
+    el.addEventListener('pointerdown', (e)=> {
+      // if it's an anchor inside card, let anchor handle navigation
+      const a = el.closest('a');
+      if(a) return;
+      // else, if card has click handler, simulate click
+      if(typeof el.onclick === 'function') el.onclick();
+      // also dispatch click event
+      el.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true}));
+    }, {passive:true});
+  });
+
+})();
+</script>
+</body>
+</html>
